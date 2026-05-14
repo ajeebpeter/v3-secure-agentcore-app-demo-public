@@ -28,16 +28,15 @@ flowchart TB
                     AgentProxy1["λ Agent Proxy"]
                     Runtime1["🤖 AgentCore Runtime<br/>VPC Mode"]
                     OAuthCB1["λ OAuth Callback"]
-                    OrdersLambdas1["λ Orders (GET/POST/PUT)"]
-                    Authorizer1["λ JWT Authorizer"]
+                    OrdersLambdas1["λ Orders (GET/POST/PUT)<br/>+ JWT Authorizer λ"]
                 end
                 subgraph Endpoints1["VPC Endpoints (11)"]
                     EP1["DynamoDB • S3 • SecretsManager<br/>Bedrock Runtime • CloudWatch Logs<br/>ECR dkr • ECR api • execute-api<br/>bedrock-agentcore • agentcore.gateway<br/>bedrock-agent-runtime"]
                 end
                 NAT1["🌐 NAT Gateway<br/>(Azure AD only)"]
             end
-            OrdersAPI1["🛡️ Orders REST API<br/>REGIONAL + JWT + WAF"]
-            Gateway1["🔗 AgentCore Gateway<br/>(AWS-managed, external)<br/>MCP + Cedar Policy"]
+            OrdersAPI1["🛡️ Orders REST API GW<br/>REGIONAL + JWT + WAF<br/>(AWS-managed, outside VPC)"]
+            Gateway1["🔗 AgentCore Gateway<br/>(AWS-managed, outside VPC)<br/>MCP + Cedar Policy"]
         end
 
         subgraph DR["🟡 us-east-2 (DR)"]
@@ -70,7 +69,7 @@ flowchart TB
     AgentProxy1 -->|VPC Endpoint| Runtime1
     Runtime1 -->|VPC Endpoint| Gateway1
     Gateway1 -->|HTTPS + JWT| OrdersAPI1
-    OrdersAPI1 --> OrdersLambdas1
+    OrdersAPI1 -->|invokes| OrdersLambdas1
     OrdersLambdas1 -->|VPC Endpoint| DDB
     OAuthCB1 -->|NAT| AzureAD
     Runtime1 -.->|VPC Endpoint| EP1
