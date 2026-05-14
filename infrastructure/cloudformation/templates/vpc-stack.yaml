@@ -571,14 +571,18 @@ Resources:
         - Key: Project
           Value: secure-agentcore-app
 
-  # Interface Endpoint for execute-api (Private API Gateway access)
+  # Interface Endpoint for execute-api
+  # NOTE: PrivateDnsEnabled must be FALSE — the AgentCore Runtime (VPC mode)
+  # calls its own HTTP API Gateway. With private DNS, the VPC endpoint intercepts
+  # and returns 403 (HTTP APIs don't work through execute-api VPC endpoints).
+  # Traffic goes through NAT Gateway instead, which works.
   ExecuteApiEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcId: !Ref VPC
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.execute-api'
       VpcEndpointType: Interface
-      PrivateDnsEnabled: true
+      PrivateDnsEnabled: false
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
