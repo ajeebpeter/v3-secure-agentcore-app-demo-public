@@ -974,6 +974,18 @@ for p in params:
         log_info "  DR VPC: ${DR_VPC_ID}"
     fi
 
+    # Inject GatewayArn for API resource policy (look up from existing DR stack)
+    local DR_GW_ID=$(aws cloudformation describe-stacks \
+        --stack-name "${DR_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} \
+        --query 'Stacks[0].Outputs[?OutputKey==`GatewayId`].OutputValue' --output text 2>/dev/null || echo "")
+    if [ -n "${DR_GW_ID}" ] && [ "${DR_GW_ID}" != "None" ]; then
+        local DR_GW_ARN=$(aws bedrock-agentcore-control get-gateway --gateway-identifier "${DR_GW_ID}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'gatewayArn' --output text 2>/dev/null || echo "")
+        if [ -n "${DR_GW_ARN}" ] && [ "${DR_GW_ARN}" != "None" ]; then
+            PARAM_OVERRIDES+=("GatewayArn=${DR_GW_ARN}")
+            log_info "  DR GatewayArn: ${DR_GW_ARN}"
+        fi
+    fi
+
     # Deploy DR stack
     log_info "Deploying DR CloudFormation stack: ${DR_STACK_NAME}..."
     aws cloudformation deploy \
