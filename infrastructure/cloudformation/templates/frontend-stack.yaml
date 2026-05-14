@@ -61,6 +61,80 @@ Conditions:
 # ============================================================================
 Resources:
   # --------------------------------------------------------------------------
+  # WAF WebACL for CloudFront (Global Scope)
+  # --------------------------------------------------------------------------
+  # Protects the CloudFront distribution against common web attacks,
+  # IP reputation threats, SQL injection, and request flooding.
+  # Must be Scope: CLOUDFRONT and deployed in us-east-1.
+  CloudFrontWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${Environment}-cloudfront-waf-${DeploymentSuffix}'
+      Description: WAF WebACL for CloudFront distribution - blocks malicious traffic
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${Environment}-cloudfront-waf'
+      CustomResponseBodies:
+        BlockedRequestResponse:
+          ContentType: APPLICATION_JSON
+          Content: '{"error":"Forbidden","message":"Your request has been blocked by the web application firewall.","statusCode":403}'
+      Rules:
+        # Priority 1: Block requests from known malicious IPs
+        - Name: AWSManagedRulesAmazonIpReputationList
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${Environment}-ip-reputation'
+        # Priority 2: Block SQL injection attempts
+        - Name: AWSManagedRulesSQLiRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${Environment}-sqli-protection'
+        # Priority 3: Rate limiting - 2000 requests per 5 minutes per IP
+        - Name: RateLimitPerIP
+          Priority: 3
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: BlockedRequestResponse
+          Statement:
+            RateBasedStatement:
+              Limit: 2000
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${Environment}-rate-limit'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: Frontend
+        - Key: Purpose
+          Value: WebApplicationFirewall
+  # --------------------------------------------------------------------------
   # S3 Bucket for Static Website Hosting
   # --------------------------------------------------------------------------
   FrontendBucket:
@@ -151,6 +225,9 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
+        # Associate WAF WebACL with CloudFront distribution
+        WebACLId: !GetAtt CloudFrontWebACL.Arn
+        
         # Enable distribution immediately after creation
         Enabled: true
         
@@ -344,3 +421,9 @@ Outputs:
   DistributionArn:
     Description: CloudFront distribution ARN
     Value: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  CloudFrontWebACLArn:
+    Description: WAF WebACL ARN for CloudFront distribution
+    Value: !GetAtt CloudFrontWebACL.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontWebACLArn'

@@ -322,6 +322,15 @@ deploy_runtime() {
         --query "roleArn" --output text 2>/dev/null)
     log_info "  Runtime: ${FULL_RUNTIME_ID}"
 
+    # Look up VPC parameters from standalone VPC stack
+    local VPC_STACK_NAME="${ENVIRONMENT}-vpc-${SUFFIX}"
+    local PRIV_SUB1=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet1Id`].OutputValue' --output text 2>/dev/null || echo "")
+    local PRIV_SUB2=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet2Id`].OutputValue' --output text 2>/dev/null || echo "")
+    local LAMBDA_SG=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`LambdaSecurityGroupId`].OutputValue' --output text 2>/dev/null || echo "")
+    if [ -n "${PRIV_SUB1}" ] && [ "${PRIV_SUB1}" != "None" ]; then
+        log_info "  VPC: subnets=${PRIV_SUB1},${PRIV_SUB2} sg=${LAMBDA_SG}"
+    fi
+
     PACKAGES_DIR="${PROJECT_ROOT}/infrastructure/lambda-packages"
     ZIP_PATH="${PACKAGES_DIR}/order-agent.zip"
     BUILD_DIR="${PROJECT_ROOT}/.lambda-build/order-agent"
@@ -388,7 +397,7 @@ try:
                 'entryPoint': ['opentelemetry-instrument', 'order_agent.py'],
             }
         },
-        networkConfiguration={'networkMode': 'PUBLIC'},
+        networkConfiguration={'networkMode': 'VPC', 'networkModeConfig': {'subnets': ['${PRIV_SUB1}', '${PRIV_SUB2}'], 'securityGroups': ['${LAMBDA_SG}']}},
         environmentVariables=env_vars,
     )
     print(f'  ✔ Runtime updated to version {resp.get(\"agentRuntimeVersion\", \"?\")}')
@@ -682,6 +691,33 @@ for p in params:
     PARAM_OVERRIDES+=("CreateDDBTable=true")
     PARAM_OVERRIDES+=("DRRegion=${DR_REGION}")
 
+    # Inject CloudFront domain for CORS restriction (look up from global stack)
+    local CF_DOMAIN_FOR_CORS=$(aws cloudformation describe-stacks \
+        --stack-name "secure-agentcore-app-${ENVIRONMENT}-${SUFFIX}-global" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} \
+        --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' --output text 2>/dev/null || echo "")
+    if [ -n "${CF_DOMAIN_FOR_CORS}" ] && [ "${CF_DOMAIN_FOR_CORS}" != "None" ]; then
+        PARAM_OVERRIDES+=("CloudFrontDomain=${CF_DOMAIN_FOR_CORS}")
+        log_info "  CloudFrontDomain: ${CF_DOMAIN_FOR_CORS}"
+    fi
+
+    # Inject VPC parameters from standalone VPC stack
+    local VPC_STACK_NAME="${ENVIRONMENT}-vpc-${SUFFIX}"
+    local VPC_ID=$(aws cloudformation describe-stacks \
+        --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} \
+        --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text 2>/dev/null || echo "")
+    if [ -n "${VPC_ID}" ] && [ "${VPC_ID}" != "None" ]; then
+        local PRIV_SUB1=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet1Id`].OutputValue' --output text 2>/dev/null)
+        local PRIV_SUB2=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet2Id`].OutputValue' --output text 2>/dev/null)
+        local LAMBDA_SG=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`LambdaSecurityGroupId`].OutputValue' --output text 2>/dev/null)
+        local EXEC_API_EP=$(aws cloudformation describe-stacks --stack-name "${VPC_STACK_NAME}" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`ExecuteApiEndpointId`].OutputValue' --output text 2>/dev/null)
+        PARAM_OVERRIDES+=("VpcId=${VPC_ID}")
+        PARAM_OVERRIDES+=("PrivateSubnet1Id=${PRIV_SUB1}")
+        PARAM_OVERRIDES+=("PrivateSubnet2Id=${PRIV_SUB2}")
+        PARAM_OVERRIDES+=("LambdaSecurityGroupId=${LAMBDA_SG}")
+        PARAM_OVERRIDES+=("ExecuteApiEndpointId=${EXEC_API_EP}")
+        log_info "  VPC: ${VPC_ID} (from ${VPC_STACK_NAME})"
+    fi
+
     aws cloudformation deploy \
         --template-file "${TEMPLATES_DIR}/parent-regional.yaml" \
         --stack-name "${STACK_NAME}" \
@@ -912,6 +948,32 @@ for p in params:
     PARAM_OVERRIDES+=("CreateDDBTable=false")
     PARAM_OVERRIDES+=("DRRegion=")
 
+    # Inject CloudFront domain for CORS restriction (look up from global stack)
+    local DR_CF_DOMAIN=$(aws cloudformation describe-stacks \
+        --stack-name "secure-agentcore-app-${ENVIRONMENT}-${SUFFIX}-global" --region "${PRIMARY_REGION}" ${AWS_PROFILE_FLAG} \
+        --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDomainName`].OutputValue' --output text 2>/dev/null || echo "")
+    if [ -n "${DR_CF_DOMAIN}" ] && [ "${DR_CF_DOMAIN}" != "None" ]; then
+        PARAM_OVERRIDES+=("CloudFrontDomain=${DR_CF_DOMAIN}")
+    fi
+
+    # Inject VPC parameters from standalone DR VPC stack
+    local DR_VPC_STACK_NAME="${ENVIRONMENT}-vpc-${SUFFIX}"
+    local DR_VPC_ID=$(aws cloudformation describe-stacks \
+        --stack-name "${DR_VPC_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} \
+        --query 'Stacks[0].Outputs[?OutputKey==`VpcId`].OutputValue' --output text 2>/dev/null || echo "")
+    if [ -n "${DR_VPC_ID}" ] && [ "${DR_VPC_ID}" != "None" ]; then
+        local DR_PRIV_SUB1=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet1Id`].OutputValue' --output text 2>/dev/null)
+        local DR_PRIV_SUB2=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet2Id`].OutputValue' --output text 2>/dev/null)
+        local DR_LAMBDA_SG=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`LambdaSecurityGroupId`].OutputValue' --output text 2>/dev/null)
+        local DR_EXEC_API_EP=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`ExecuteApiEndpointId`].OutputValue' --output text 2>/dev/null)
+        PARAM_OVERRIDES+=("VpcId=${DR_VPC_ID}")
+        PARAM_OVERRIDES+=("PrivateSubnet1Id=${DR_PRIV_SUB1}")
+        PARAM_OVERRIDES+=("PrivateSubnet2Id=${DR_PRIV_SUB2}")
+        PARAM_OVERRIDES+=("LambdaSecurityGroupId=${DR_LAMBDA_SG}")
+        PARAM_OVERRIDES+=("ExecuteApiEndpointId=${DR_EXEC_API_EP}")
+        log_info "  DR VPC: ${DR_VPC_ID}"
+    fi
+
     # Deploy DR stack
     log_info "Deploying DR CloudFormation stack: ${DR_STACK_NAME}..."
     aws cloudformation deploy \
@@ -1065,6 +1127,12 @@ print(json.dumps({
             --stack-name "${DR_STACK_NAME}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} \
             --query 'Stacks[0].Outputs[?OutputKey==`AgentProxyFunctionUrl`].OutputValue' --output text 2>/dev/null || echo "")
 
+        # Look up DR VPC parameters for runtime VPC mode
+        local DR_VPC_STACK="${ENVIRONMENT}-vpc-${SUFFIX}"
+        local PRIV_SUB1=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet1Id`].OutputValue' --output text 2>/dev/null || echo "")
+        local PRIV_SUB2=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`PrivateSubnet2Id`].OutputValue' --output text 2>/dev/null || echo "")
+        local LAMBDA_SG=$(aws cloudformation describe-stacks --stack-name "${DR_VPC_STACK}" --region "${DR_REGION}" ${AWS_PROFILE_FLAG} --query 'Stacks[0].Outputs[?OutputKey==`LambdaSecurityGroupId`].OutputValue' --output text 2>/dev/null || echo "")
+
         python3 -c "
 import boto3, sys
 ac = boto3.client('bedrock-agentcore-control', region_name='${DR_REGION}')
@@ -1097,7 +1165,7 @@ try:
                 'entryPoint': ['opentelemetry-instrument', 'order_agent.py'],
             }
         },
-        networkConfiguration={'networkMode': 'PUBLIC'},
+        networkConfiguration={'networkMode': 'VPC', 'networkModeConfig': {'subnets': ['${PRIV_SUB1}', '${PRIV_SUB2}'], 'securityGroups': ['${LAMBDA_SG}']}},
         environmentVariables=env_vars,
     )
     print(f'  ✔ DR Runtime updated to version {resp.get(\"agentRuntimeVersion\", \"?\")}')
@@ -1295,7 +1363,7 @@ try:
                 'entryPoint': ['opentelemetry-instrument', 'order_agent.py'],
             }
         },
-        networkConfiguration={'networkMode': 'PUBLIC'},
+        networkConfiguration={'networkMode': 'VPC', 'networkModeConfig': {'subnets': ['${PRIV_SUB1}', '${PRIV_SUB2}'], 'securityGroups': ['${LAMBDA_SG}']}},
         environmentVariables=env_vars,
     )
     print(f'  ✔ DR Runtime updated to version {resp.get(\"agentRuntimeVersion\", \"?\")}')

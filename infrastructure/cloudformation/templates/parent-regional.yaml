@@ -78,6 +78,37 @@ Parameters:
     Type: String
     Default: ''
 
+  CloudFrontDomain:
+    Type: String
+    Default: ''
+    Description: CloudFront distribution domain name for CORS restriction
+
+  # VPC parameters — passed from standalone VPC stack (dev-vpc-v3redwood)
+  VpcId:
+    Type: String
+    Default: ''
+    Description: VPC ID from standalone vpc-stack
+
+  PrivateSubnet1Id:
+    Type: String
+    Default: ''
+    Description: First private subnet ID from vpc-stack
+
+  PrivateSubnet2Id:
+    Type: String
+    Default: ''
+    Description: Second private subnet ID from vpc-stack
+
+  LambdaSecurityGroupId:
+    Type: String
+    Default: ''
+    Description: Lambda security group ID from vpc-stack
+
+  ExecuteApiEndpointId:
+    Type: String
+    Default: ''
+    Description: execute-api VPC endpoint ID from vpc-stack
+
 Resources:
   BackendAPIStack:
     Type: AWS::CloudFormation::Stack
@@ -93,6 +124,13 @@ Resources:
         DeploymentSuffix: !Ref DeploymentSuffix
         CreateDDBTable: !Ref CreateDDBTable
         DRRegion: !Ref DRRegion
+        VpcId: !Ref VpcId
+        PrivateSubnetIds: !Join
+          - ','
+          - - !Ref PrivateSubnet1Id
+            - !Ref PrivateSubnet2Id
+        LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
+        ExecuteApiEndpointId: !Ref ExecuteApiEndpointId
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -120,6 +158,13 @@ Resources:
         DeploymentSuffix: !Ref DeploymentSuffix
         BedrockModelId: !Ref BedrockModelId
         LogLevel: !Ref LogLevel
+        VpcId: !Ref VpcId
+        PrivateSubnetIds: !Join
+          - ','
+          - - !Ref PrivateSubnet1Id
+            - !Ref PrivateSubnet2Id
+        LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
+        CloudFrontDomain: !Ref CloudFrontDomain
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -130,6 +175,31 @@ Resources:
       TimeoutInMinutes: 30
 
 Outputs:
+  VpcId:
+    Value: !Ref VpcId
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  PrivateSubnet1Id:
+    Value: !Ref PrivateSubnet1Id
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet1Id'
+
+  PrivateSubnet2Id:
+    Value: !Ref PrivateSubnet2Id
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet2Id'
+
+  LambdaSecurityGroupId:
+    Value: !Ref LambdaSecurityGroupId
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaSecurityGroupId'
+
+  ExecuteApiEndpointId:
+    Value: !Ref ExecuteApiEndpointId
+    Export:
+      Name: !Sub '${AWS::StackName}-ExecuteApiEndpointId'
+
   ApiUrl:
     Value: !GetAtt BackendAPIStack.Outputs.ApiUrl
     Export:

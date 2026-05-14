@@ -1,0 +1,656 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC Stack - Network isolation with private/public subnets, NAT Gateway, and route tables for secure multi-region deployment'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name for resource naming
+
+  DeploymentSuffix:
+    Type: String
+    Default: ''
+    Description: Timestamp suffix (yyyymmddHHMM) to make resource names unique across deployments
+
+  VpcCidrBlock:
+    Type: String
+    Default: ''
+    Description: VPC CIDR block override (leave empty to use region-based mapping)
+
+Mappings:
+  RegionCidrMap:
+    us-east-1:
+      VpcCidr: '10.0.0.0/16'
+      PrivateSubnet1Cidr: '10.0.1.0/24'
+      PrivateSubnet2Cidr: '10.0.2.0/24'
+      PublicSubnet1Cidr: '10.0.101.0/24'
+      PublicSubnet2Cidr: '10.0.102.0/24'
+      AZ1: 'us-east-1a'
+      AZ2: 'us-east-1c'
+    us-east-2:
+      VpcCidr: '10.1.0.0/16'
+      PrivateSubnet1Cidr: '10.1.1.0/24'
+      PrivateSubnet2Cidr: '10.1.2.0/24'
+      PublicSubnet1Cidr: '10.1.101.0/24'
+      PublicSubnet2Cidr: '10.1.102.0/24'
+      AZ1: 'us-east-2a'
+      AZ2: 'us-east-2b'
+
+Conditions:
+  HasCustomCidr: !Not [!Equals [!Ref VpcCidrBlock, '']]
+
+Resources:
+  # VPC with region-specific CIDR from mappings
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !If
+        - HasCustomCidr
+        - !Ref VpcCidrBlock
+        - !FindInMap [RegionCidrMap, !Ref 'AWS::Region', VpcCidr]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-vpc-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Private Subnet 1 - First AZ
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', PrivateSubnet1Cidr]
+      AvailabilityZone: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', AZ1]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-private-subnet-1-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+        - Key: Tier
+          Value: Private
+
+  # Private Subnet 2 - Second AZ
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', PrivateSubnet2Cidr]
+      AvailabilityZone: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', AZ2]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-private-subnet-2-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+        - Key: Tier
+          Value: Private
+
+  # Public Subnet 1 - First AZ (for NAT Gateway)
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', PublicSubnet1Cidr]
+      AvailabilityZone: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', AZ1]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-public-subnet-1-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+        - Key: Tier
+          Value: Public
+
+  # Public Subnet 2 - Second AZ
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', PublicSubnet2Cidr]
+      AvailabilityZone: !FindInMap [RegionCidrMap, !Ref 'AWS::Region', AZ2]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-public-subnet-2-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+        - Key: Tier
+          Value: Public
+
+  # Internet Gateway - Required for NAT Gateway's public subnet
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-igw-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Attach Internet Gateway to VPC
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Elastic IP for NAT Gateway
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-nat-eip-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # NAT Gateway - Single instance in first public subnet (cost optimization for dev)
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-nat-gw-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Private Route Table - Routes internet-bound traffic to NAT Gateway
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-private-rt-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Private Route - Default route to NAT Gateway for outbound internet access
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGateway
+
+  # Associate Private Subnet 1 with Private Route Table
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Associate Private Subnet 2 with Private Route Table
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Public Route Table - Routes internet-bound traffic to Internet Gateway
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-public-rt-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Public Route - Default route to Internet Gateway
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  # Associate Public Subnet 1 with Public Route Table
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  # Associate Public Subnet 2 with Public Route Table
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # ============================================================
+  # Security Groups
+  # ============================================================
+
+  # Lambda Security Group - attached to all VPC-connected Lambda functions
+  # No inbound rules; egress restricted to VPC endpoints and NAT Gateway subnet
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions - egress to VPC endpoints and NAT
+      VpcId: !Ref VPC
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-lambda-sg-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Endpoint Security Group - attached to all interface VPC endpoints
+  # Ingress TCP 443 from Lambda SG only; no explicit outbound rules
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for VPC interface endpoints - ingress from Lambda SG only
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow HTTPS from Lambda functions
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-endpoint-sg-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Lambda SG Egress Rule - Allow HTTPS to Endpoint SG (VPC endpoint traffic)
+  LambdaToEndpointEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref EndpointSecurityGroup
+      Description: Allow HTTPS to VPC endpoints
+
+  # Lambda SG Egress Rule - Allow HTTPS to NAT Gateway subnet CIDR (for Azure AD OAuth)
+  # Lambda SG Egress Rule - Allow HTTPS to any destination via NAT Gateway
+  # Required for: Azure AD OAuth, AgentCore control plane (bedrock-agentcore.amazonaws.com)
+  LambdaToNatEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: '0.0.0.0/0'
+      Description: Allow HTTPS outbound via NAT Gateway (Azure AD OAuth + AgentCore control plane)
+
+  # ============================================================
+  # Gateway VPC Endpoints (free, route-table based)
+  # ============================================================
+
+  # Gateway Endpoint for DynamoDB - associated with private route table
+  DynamoDBEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-dynamodb-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Gateway Endpoint for S3 - associated with private route table
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-s3-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # ============================================================
+  # Interface VPC Endpoints (PrivateLink, ENI-based)
+  # ============================================================
+
+  # Interface Endpoint for Secrets Manager
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-secretsmanager-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for Bedrock Runtime
+  BedrockRuntimeEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-runtime'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-bedrock-runtime-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for CloudWatch Logs
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-logs-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for ECR Docker (required for AgentCore VPC mode)
+  EcrDkrEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-ecr-dkr-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for ECR API (required for AgentCore VPC mode)
+  EcrApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-ecr-api-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for Bedrock AgentCore Runtime
+  BedrockAgentCoreEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agent-runtime'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-bedrock-agentcore-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for Bedrock AgentCore Control Plane (InvokeAgentRuntime)
+  BedrockAgentCoreControlEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agentcore'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-bedrock-agentcore-control-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for Bedrock AgentCore Gateway (MCP tool calls)
+  BedrockAgentCoreGatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agentcore.gateway'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-bedrock-agentcore-gw-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+  # Interface Endpoint for execute-api (Private API Gateway access)
+  ExecuteApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.execute-api'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-execute-api-endpoint-${DeploymentSuffix}'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Project
+          Value: secure-agentcore-app
+
+Outputs:
+  VpcId:
+    Description: VPC identifier
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  PrivateSubnet1Id:
+    Description: First private subnet identifier
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet1Id'
+
+  PrivateSubnet2Id:
+    Description: Second private subnet identifier
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet2Id'
+
+  PublicSubnet1Id:
+    Description: First public subnet identifier
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet1Id'
+
+  PublicSubnet2Id:
+    Description: Second public subnet identifier
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet2Id'
+
+  PrivateRouteTableId:
+    Description: Private route table identifier
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateRouteTableId'
+
+  NatGatewayId:
+    Description: NAT Gateway identifier
+    Value: !Ref NatGateway
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGatewayId'
+
+  LambdaSecurityGroupId:
+    Description: Security group for Lambda functions
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaSecurityGroupId'
+
+  EndpointSecurityGroupId:
+    Description: Security group for VPC interface endpoints
+    Value: !Ref EndpointSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-EndpointSecurityGroupId'
+
+  ExecuteApiEndpointId:
+    Description: VPC endpoint for execute-api service
+    Value: !Ref ExecuteApiEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-ExecuteApiEndpointId'

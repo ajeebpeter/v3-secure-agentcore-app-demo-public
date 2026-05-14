@@ -79,6 +79,33 @@ Parameters:
     Description: Timestamp suffix (yyyymmddHHMM) to make resource names unique across deployments
     Default: ''
 
+  VpcId:
+    Type: String
+    Description: VPC ID from vpc-stack (leave empty to skip VPC configuration)
+    Default: ''
+
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of private subnet IDs for Lambda VPC placement
+    Default: ''
+
+  LambdaSecurityGroupId:
+    Type: String
+    Description: Security group ID for Lambda functions in the VPC
+    Default: ''
+
+  CloudFrontDomain:
+    Type: String
+    Description: CloudFront distribution domain name for CORS restriction
+    Default: ''
+
+# ============================================================================
+# CONDITIONS
+# ============================================================================
+Conditions:
+  HasVpcConfig: !Not [!Equals [!Ref VpcId, '']]
+  HasCloudFrontDomain: !Not [!Equals [!Ref CloudFrontDomain, '']]
+
 # ============================================================================
 # RESOURCES
 # Resource creation order (respecting dependencies):
@@ -112,6 +139,12 @@ Resources:
             Principal:
               Service: bedrock-agentcore.amazonaws.com
             Action: sts:AssumeRole
+      # NOTE: AdministratorAccess is required by AgentCore Gateway to function.
+      # The Gateway is an AWS-managed service that needs broad permissions to:
+      # - Call target APIs (execute-api:Invoke)
+      # - Manage OAuth token flows (secretsmanager, bedrock-agentcore identity)
+      # - Serve MCP tools from targets
+      # TODO: Replace with least-privilege once AWS documents the minimum required permissions.
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
       Tags:
@@ -256,9 +289,21 @@ Resources:
                 Action:
                   - bedrock-agentcore:CompleteResourceTokenAuth
                   - bedrock-agentcore:GetResourceTokenAuthSession
-                Resource: '*'
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default'
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default/*'
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default'
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/*'
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${Environment}-gateway-secret*'
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:bedrock-agentcore-identity*'
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
                 Resource: '*'
       Tags:
         - Key: Environment
@@ -288,6 +333,12 @@ Resources:
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
           OAUTH_CALLBACK_TABLE: !Sub 'agentcore-oauth-cb-${DeploymentSuffix}'
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref PrivateSubnetIds
+          SecurityGroupIds:
+            - !Ref LambdaSecurityGroupId
+        - !Ref AWS::NoValue
       Timeout: 30
       MemorySize: 256
       Tags:
@@ -524,7 +575,11 @@ Resources:
       Description: Order Agent - Strands-based AI agent with MCP Gateway integration and CloudWatch observability
       RoleArn: !GetAtt RuntimeRole.Arn
       NetworkConfiguration:
-        NetworkMode: PUBLIC
+        NetworkMode: VPC
+        NetworkModeConfig:
+          Subnets: !Ref PrivateSubnetIds
+          SecurityGroups:
+            - !Ref LambdaSecurityGroupId
       # Match reference account lifecycle configuration
       LifecycleConfiguration:
         IdleRuntimeSessionTimeout: 900
@@ -590,6 +645,12 @@ Resources:
                   - bedrock-agentcore:InvokeAgentRuntime
                 # Wildcard covers the runtime ARN and all its endpoints (e.g. /runtime-endpoint/DEFAULT)
                 Resource: !Sub '${AgentCoreRuntime.AgentRuntimeArn}*'
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: '*'
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -612,8 +673,17 @@ Resources:
       Environment:
         Variables:
           AGENT_RUNTIME_ARN: !GetAtt AgentCoreRuntime.AgentRuntimeArn
-          CORS_ALLOW_ORIGIN: !Ref AllowOrigin
+          CORS_ALLOW_ORIGIN: !If
+            - HasCloudFrontDomain
+            - !Sub 'https://${CloudFrontDomain}'
+            - !Ref AllowOrigin
           LOG_LEVEL: !Ref LogLevel
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref PrivateSubnetIds
+          SecurityGroupIds:
+            - !Ref LambdaSecurityGroupId
+        - !Ref AWS::NoValue
       Timeout: 300
       MemorySize: 512
       Tags:
@@ -641,8 +711,10 @@ Resources:
       ProtocolType: HTTP
       Description: HTTP API Gateway fronting Agent Proxy and OAuth Callback Lambdas
       CorsConfiguration:
-        AllowOrigins:
-          - '*'
+        AllowOrigins: !If
+          - HasCloudFrontDomain
+          - - !Sub 'https://${CloudFrontDomain}'
+          - - '*'
         AllowMethods:
           - POST
           - OPTIONS
@@ -659,6 +731,21 @@ Resources:
       StageName: '$default'
       AutoDeploy: true
 
+  # JWT Authorizer for Agent Proxy HTTP API
+  # Validates Azure Entra ID tokens on protected routes (POST /invoke only)
+  AgentProxyJwtAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref AgentProxyApi
+      AuthorizerType: JWT
+      Name: !Sub '${Environment}-agent-proxy-jwt-auth-${DeploymentSuffix}'
+      IdentitySource:
+        - $request.header.Authorization
+      JwtConfiguration:
+        Issuer: !Sub 'https://login.microsoftonline.com/${TargetIdpTenantId}/v2.0'
+        Audience:
+          - !Ref GatewayIdpClientId
+
   # Integration: POST /invoke → AgentProxyLambda
   AgentProxyIntegration:
     Type: AWS::ApiGatewayV2::Integration
@@ -673,6 +760,8 @@ Resources:
     Properties:
       ApiId: !Ref AgentProxyApi
       RouteKey: 'POST /invoke'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref AgentProxyJwtAuthorizer
       Target: !Sub 'integrations/${AgentProxyIntegration}'
 
   # Permission for API Gateway to invoke Agent Proxy Lambda

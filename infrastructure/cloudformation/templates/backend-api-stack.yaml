@@ -65,12 +65,33 @@ Parameters:
     Default: ''
     Description: DR region for Global Table replica (leave empty to skip replica creation)
 
+  VpcId:
+    Type: String
+    Default: ''
+    Description: VPC ID from vpc-stack (leave empty to skip VPC configuration)
+
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+    Default: ''
+    Description: Comma-delimited list of private subnet IDs for Lambda VPC placement
+
+  LambdaSecurityGroupId:
+    Type: String
+    Default: ''
+    Description: Security group ID for Lambda functions in the VPC
+
+  ExecuteApiEndpointId:
+    Type: String
+    Default: ''
+    Description: VPC endpoint ID for execute-api service (required for PRIVATE API Gateway)
+
 Conditions:
   ShouldCreateTable: !Equals [!Ref CreateDDBTable, 'true']
   HasDRRegion: !Not [!Equals [!Ref DRRegion, '']]
   CreateWithReplica: !And
     - !Condition ShouldCreateTable
     - !Condition HasDRRegion
+  HasVpcConfig: !Not [!Equals [!Ref VpcId, '']]
 
 Resources:
   # DynamoDB Global Table with GSIs for order management
@@ -175,6 +196,16 @@ Resources:
                     - ShouldCreateTable
                     - !Sub '${OrdersTable.Arn}/index/*'
                     - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${Environment}-${TableName}-${DeploymentSuffix}/index/*'
+        - PolicyName: VPCNetworkingAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: '*'
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -192,6 +223,12 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 30
       MemorySize: 256
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref PrivateSubnetIds
+          SecurityGroupIds:
+            - !Ref LambdaSecurityGroupId
+        - !Ref AWS::NoValue
       Environment:
         Variables:
           DYNAMODB_TABLE_NAME: !Sub '${Environment}-${TableName}-${DeploymentSuffix}'
@@ -215,6 +252,12 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 30
       MemorySize: 256
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref PrivateSubnetIds
+          SecurityGroupIds:
+            - !Ref LambdaSecurityGroupId
+        - !Ref AWS::NoValue
       Environment:
         Variables:
           DYNAMODB_TABLE_NAME: !Sub '${Environment}-${TableName}-${DeploymentSuffix}'
@@ -238,6 +281,12 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 30
       MemorySize: 256
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref PrivateSubnetIds
+          SecurityGroupIds:
+            - !Ref LambdaSecurityGroupId
+        - !Ref AWS::NoValue
       Environment:
         Variables:
           DYNAMODB_TABLE_NAME: !Sub '${Environment}-${TableName}-${DeploymentSuffix}'
@@ -289,6 +338,16 @@ Resources:
                 Resource:
                   - !GetAtt AuthorizerAuditLogGroup.Arn
                   - !Sub '${AuthorizerAuditLogGroup.Arn}:*'
+        - PolicyName: VPCNetworkingAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: '*'
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -307,6 +366,12 @@ Resources:
       Role: !GetAtt AuthorizerExecutionRole.Arn
       Timeout: 10  # Short timeout for authorization checks
       MemorySize: 256
+      VpcConfig: !If
+        - HasVpcConfig
+        - SubnetIds: !Ref PrivateSubnetIds
+          SecurityGroupIds:
+            - !Ref LambdaSecurityGroupId
+        - !Ref AWS::NoValue
       Environment:
         Variables:
           JWKS_URL: !Ref JwksUrl
@@ -324,6 +389,9 @@ Resources:
           Value: Authorization
 
   # API Gateway REST API
+  # When VPC config is provided, the API becomes PRIVATE (accessible only from within the VPC)
+  # Orders API stays REGIONAL — AgentCore Gateway (AWS-managed, outside VPC) needs to reach it.
+  # Security is enforced by JWT authorizer + WAF, not network isolation.
   OrdersApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
@@ -331,7 +399,7 @@ Resources:
       Description: REST API for order management with JWT authorization
       EndpointConfiguration:
         Types:
-          - REGIONAL  # Regional endpoint for lower latency
+          - REGIONAL
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -451,6 +519,80 @@ Resources:
       RestApiId: !Ref OrdersApi
       StageName: !Ref Environment
 
+  # Regional WAF WebACL for Orders API Gateway
+  # Protects against common web attacks: IP reputation, SQL injection, rate limiting
+  RegionalWafWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${Environment}-orders-api-waf-${DeploymentSuffix}'
+      Description: Regional WAF WebACL for Orders REST API Gateway
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${Environment}-orders-api-waf-${DeploymentSuffix}'
+      CustomResponseBodies:
+        BlockedRequestBody:
+          ContentType: APPLICATION_JSON
+          Content: '{"error":"Forbidden","message":"Request blocked by WAF policy","statusCode":403}'
+      Rules:
+        - Name: AWSManagedRulesAmazonIpReputationList
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${Environment}-ip-reputation-${DeploymentSuffix}'
+        - Name: AWSManagedRulesSQLiRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${Environment}-sqli-rules-${DeploymentSuffix}'
+        - Name: RateLimitRule
+          Priority: 3
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: BlockedRequestBody
+          Statement:
+            RateBasedStatement:
+              Limit: 2000
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${Environment}-rate-limit-${DeploymentSuffix}'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: WebApplicationFirewall
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # WAF WebACL Association - Links regional WAF to Orders API Gateway stage
+  RegionalWafWebAclAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    DependsOn: ApiDeployment
+    Properties:
+      ResourceArn: !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${OrdersApi}/stages/${Environment}'
+      WebACLArn: !GetAtt RegionalWafWebAcl.Arn
+
   # Lambda Permissions for API Gateway
   # Allow API Gateway to invoke Lambda functions
   GetOrdersLambdaPermission:
@@ -543,3 +685,10 @@ Outputs:
     Value: !GetAtt UpdateOrderFunction.Arn
     Export:
       Name: !Sub '${AWS::StackName}-UpdateOrderFunctionArn'
+
+  # WAF WebACL ARN - Used for monitoring and cross-stack references
+  RegionalWafWebAclArn:
+    Description: ARN of the regional WAF WebACL protecting the Orders API
+    Value: !GetAtt RegionalWafWebAcl.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RegionalWafWebAclArn'

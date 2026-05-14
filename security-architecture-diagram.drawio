@@ -1,0 +1,226 @@
+<mxfile host="app.diagrams.net" pages="1">
+  <diagram name="Security Architecture" id="security-vpc-arch">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title1" value="&lt;b&gt;Secure Agentic App — VPC Security Architecture&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Internet / External Zone -->
+        <mxCell id="internet_zone" value="&lt;b&gt;Internet (External)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="70" width="1500" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- User Browser -->
+        <mxCell id="user" value="User Browser&lt;br&gt;(MSAL + JWT)" style="shape=mxgraph.aws4.client;outlineConnect=0;fontColor=#232F3E;fillColor=#232F3E;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="100" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Azure AD -->
+        <mxCell id="azuread" value="Azure Entra ID&lt;br&gt;(OAuth2 / JWKS)" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.general_saml_token;outlineConnect=0;fontColor=#232F3E;fillColor=#D45B07;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="100" width="50" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- AWS Cloud Zone -->
+        <mxCell id="aws_cloud" value="&lt;b&gt;AWS Cloud&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;fontSize=14;dashed=0;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="210" width="1500" height="950" as="geometry" />
+        </mxCell>
+
+        <!-- CloudFront + WAF (Edge) -->
+        <mxCell id="edge_zone" value="&lt;b&gt;Edge Layer (CloudFront + WAF)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="250" width="600" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="waf_cf" value="AWS WAF&lt;br&gt;(IP Rep + SQLi + Rate Limit)" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.waf;" vertex="1" parent="1">
+          <mxGeometry x="160" y="290" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cloudfront" value="CloudFront&lt;br&gt;(HTTPS + OAC)" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;" vertex="1" parent="1">
+          <mxGeometry x="310" y="290" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3_frontend" value="S3 (Frontend)&lt;br&gt;Private + OAC" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#3F8624;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" vertex="1" parent="1">
+          <mxGeometry x="510" y="290" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- VPC Region Box -->
+        <mxCell id="vpc_region" value="&lt;b&gt;VPC (10.0.0.0/16) — us-east-1&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=12;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="100" y="410" width="1400" height="720" as="geometry" />
+        </mxCell>
+
+        <!-- Public Subnets -->
+        <mxCell id="public_subnets" value="&lt;b&gt;Public Subnets (10.0.101.0/24, 10.0.102.0/24)&lt;/b&gt;&lt;br&gt;NAT Gateway only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="130" y="450" width="400" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="nat_gw" value="NAT Gateway&lt;br&gt;(Azure AD only)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.nat_gateway;" vertex="1" parent="1">
+          <mxGeometry x="280" y="475" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Private Subnets -->
+        <mxCell id="private_subnets" value="&lt;b&gt;Private Subnets (10.0.1.0/24, 10.0.2.0/24) — No Internet Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="130" y="580" width="1340" height="520" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway Layer -->
+        <mxCell id="apigw_layer" value="&lt;b&gt;API Gateway Layer&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="160" y="620" width="500" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="http_api" value="HTTP API GW&lt;br&gt;(Agent Proxy)&lt;br&gt;&lt;b&gt;+ JWT Authorizer&lt;/b&gt;" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="1">
+          <mxGeometry x="210" y="650" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rest_api" value="REST API GW&lt;br&gt;(Orders API)&lt;br&gt;&lt;b&gt;PRIVATE + WAF&lt;/b&gt;" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="1">
+          <mxGeometry x="430" y="650" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Lambda Layer -->
+        <mxCell id="lambda_layer" value="&lt;b&gt;Lambda Functions (VPC-attached, Lambda SG)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;verticalAlign=top;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="160" y="770" width="700" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agent_proxy_lambda" value="Agent Proxy&lt;br&gt;Lambda" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="200" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="oauth_lambda" value="OAuth Callback&lt;br&gt;Lambda" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="320" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="orders_lambdas" value="Orders Lambdas&lt;br&gt;(GET/POST/PUT)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="450" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="authorizer_lambda" value="JWT Authorizer&lt;br&gt;Lambda" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="580" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- AgentCore Layer -->
+        <mxCell id="agentcore_layer" value="&lt;b&gt;AgentCore (PRIVATE Mode, VPC-attached)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b0e3e6;strokeColor=#0e8585;verticalAlign=top;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="160" y="930" width="500" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agentcore_runtime" value="AgentCore Runtime&lt;br&gt;(PRIVATE mode)&lt;br&gt;order_agent.py" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" vertex="1" parent="1">
+          <mxGeometry x="210" y="965" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agentcore_gateway" value="AgentCore Gateway&lt;br&gt;(MCP + JWT + Cedar)&lt;br&gt;&lt;b&gt;Least-Privilege IAM&lt;/b&gt;" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.step_functions;" vertex="1" parent="1">
+          <mxGeometry x="430" y="965" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- VPC Endpoints -->
+        <mxCell id="vpc_endpoints" value="&lt;b&gt;VPC Endpoints (PrivateLink)&lt;/b&gt;&lt;br&gt;Endpoint Security Group: ingress 443 from Lambda SG only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="620" width="540" height="450" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_dynamodb" value="DynamoDB&lt;br&gt;(Gateway EP)&lt;br&gt;&lt;i&gt;FREE&lt;/i&gt;" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;" vertex="1" parent="1">
+          <mxGeometry x="950" y="670" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_s3" value="S3&lt;br&gt;(Gateway EP)&lt;br&gt;&lt;i&gt;FREE&lt;/i&gt;" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#3F8624;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="670" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_secrets" value="Secrets Manager&lt;br&gt;(Interface EP)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="670" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_bedrock" value="Bedrock Runtime&lt;br&gt;(Interface EP)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="670" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_logs" value="CloudWatch Logs&lt;br&gt;(Interface EP)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch;" vertex="1" parent="1">
+          <mxGeometry x="950" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_agentcore" value="Bedrock AgentCore&lt;br&gt;(Interface EP)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep_executeapi" value="execute-api&lt;br&gt;(Interface EP)&lt;br&gt;Private API GW" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="800" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Security Groups Legend -->
+        <mxCell id="sg_legend" value="&lt;b&gt;Security Groups&lt;/b&gt;&lt;br&gt;🔒 Lambda SG: No inbound, egress 443 → Endpoint SG + NAT CIDR&lt;br&gt;🔒 Endpoint SG: Ingress 443 from Lambda SG only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f0f0;strokeColor=#999999;verticalAlign=middle;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="900" y="940" width="540" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- IAM Legend -->
+        <mxCell id="iam_legend" value="&lt;b&gt;IAM Hardening&lt;/b&gt;&lt;br&gt;✅ GatewayRole: Least-privilege (no AdministratorAccess)&lt;br&gt;✅ OAuthCallbackRole: Scoped to specific ARNs&lt;br&gt;✅ All roles: ec2:*NetworkInterface for VPC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f0f0;strokeColor=#999999;verticalAlign=middle;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="900" y="1020" width="540" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Connections: User → WAF → CloudFront → S3 -->
+        <mxCell id="conn1" edge="1" source="user" target="waf_cf" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#009900;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="conn2" edge="1" source="waf_cf" target="cloudfront" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#009900;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="conn3" edge="1" source="cloudfront" target="s3_frontend" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#009900;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- CloudFront → HTTP API GW -->
+        <mxCell id="conn4" edge="1" source="cloudfront" target="http_api" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0066CC;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- HTTP API → Agent Proxy Lambda -->
+        <mxCell id="conn5" edge="1" source="http_api" target="agent_proxy_lambda" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0066CC;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Agent Proxy → AgentCore Runtime -->
+        <mxCell id="conn6" edge="1" source="agent_proxy_lambda" target="agentcore_runtime" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0066CC;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- AgentCore Runtime → Gateway -->
+        <mxCell id="conn7" edge="1" source="agentcore_runtime" target="agentcore_gateway" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0066CC;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Gateway → REST API (Private) -->
+        <mxCell id="conn8" edge="1" source="agentcore_gateway" target="rest_api" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#CC0000;strokeWidth=2;rounded=1;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- REST API → Orders Lambdas -->
+        <mxCell id="conn9" edge="1" source="rest_api" target="orders_lambdas" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0066CC;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Orders Lambdas → DynamoDB EP -->
+        <mxCell id="conn10" edge="1" source="orders_lambdas" target="ep_dynamodb" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#663399;strokeWidth=2;rounded=1;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- AgentCore Runtime → Bedrock EP -->
+        <mxCell id="conn11" edge="1" source="agentcore_runtime" target="ep_bedrock" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#663399;strokeWidth=2;rounded=1;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- OAuth Lambda → NAT → Azure AD -->
+        <mxCell id="conn12" edge="1" source="oauth_lambda" target="nat_gw" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#CC6600;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="conn13" edge="1" source="nat_gw" target="azuread" parent="1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#CC6600;strokeWidth=2;rounded=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;&lt;br&gt;━━ Green: HTTPS (encrypted)&lt;br&gt;━━ Blue: Private VPC traffic&lt;br&gt;- - Purple: VPC Endpoint (PrivateLink)&lt;br&gt;━━ Orange: NAT → Internet (OAuth only)&lt;br&gt;- - Red: Private API (VPC endpoint only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;verticalAlign=middle;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="250" width="280" height="120" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
