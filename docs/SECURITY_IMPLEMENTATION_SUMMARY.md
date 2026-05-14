@@ -3,7 +3,7 @@
 > **Date**: 2026-05-14  
 > **Branch**: v3-secure  
 > **Primary Region**: us-east-1 (COMPLETE)  
-> **DR Region**: us-east-2 (PENDING)
+> **DR Region**: us-east-2 (COMPLETE)
 
 ---
 
@@ -65,7 +65,7 @@
 
 | Role | Status | Notes |
 |------|--------|-------|
-| GatewayRole | AdministratorAccess | **Required** — AWS-managed service needs broad perms |
+| GatewayRole | Scoped (ScopedGatewayPolicy) | execute-api:Invoke + secretsmanager + bedrock-agentcore (account-scoped) + logs |
 | RuntimeRole | Least-privilege | Scoped to Bedrock, Logs, S3, SecretsManager, Memory |
 | OAuthCallbackLambdaRole | Scoped | token-vault + workload-identity-directory + specific secrets |
 | AgentProxyLambdaRole | Scoped | InvokeAgentRuntime on specific ARN only |
@@ -82,7 +82,7 @@
 | `agentcore-app-stack.yaml` | AgentCoreAppStack (nested) | ✅ JWT auth, VPC mode, IAM, CORS |
 | `backend-api-stack.yaml` | BackendAPIStack (nested) | ✅ Lambda VPC, WAF, ENI perms |
 | `parent-regional.yaml` | secure-agentcore-app-dev-v3redwood | ✅ Passes VPC params to children |
-| `frontend-stack.yaml` | WAF defined but not deployed to global stack yet | ⚠️ WAF on CloudFront pending |
+| `frontend-stack.yaml` | WAF deployed on CloudFront | ✅ Active |
 | `deploy-stack-multi-region.sh` | Runtime uses VPC mode | ✅ Updated |
 | `deploy-security-fast.sh` | Fast deploy helper | ✅ Working |
 
@@ -102,7 +102,7 @@ All 11 endpoints listed above are required. The three AgentCore-specific ones we
 - `bedrock-agent-runtime` — for Runtime internal operations
 
 ### 3. GatewayRole Cannot Be Restricted
-The AgentCore Gateway (AWS-managed service) requires `AdministratorAccess` on its IAM role. Attempts to use least-privilege caused "No MCP tools returned from Gateway" errors. AWS does not document the minimum required permissions.
+The AgentCore Gateway works with a scoped IAM policy (`ScopedGatewayPolicy`): `execute-api:Invoke` on the specific Orders API, `secretsmanager:GetSecretValue` for identity secrets, `bedrock-agentcore:*` scoped to the account, and CloudWatch Logs. AdministratorAccess is NOT required — the earlier failure was caused by missing VPC endpoints, not IAM.
 
 ### 4. Orders API Must Stay REGIONAL
 The AgentCore Gateway is AWS-managed and runs OUTSIDE your VPC. It needs to call the Orders API over the public internet. Making it PRIVATE broke the Gateway→API communication. Security is enforced by JWT authorizer + WAF instead.
@@ -150,7 +150,7 @@ To deploy VPC security in us-east-2:
 User Browser
     │ HTTPS
     ▼
-CloudFront (WAF pending) → S3 (private, OAC)
+CloudFront (WAF active) → S3 (private, OAC)
     │ /api/* via Lambda@Edge
     ▼
 HTTP API GW [JWT Authorizer] ← unauthenticated = 401
