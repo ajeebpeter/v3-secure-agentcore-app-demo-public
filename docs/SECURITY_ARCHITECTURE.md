@@ -90,7 +90,116 @@ flowchart TB
 
 ---
 
-## Security Controls Summary
+## Security Flow — Step by Step (Demo Script)
+
+Use this to walk through the security posture during a demo:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 1: User opens https://d378wato2sz2af.cloudfront.net                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 🛡️ WAF (CloudFront)                                                │    │
+│  │    • Blocks known malicious IPs (AWS IP Reputation List)            │    │
+│  │    • Blocks SQL injection attempts                                  │    │
+│  │    • Rate limits: 2000 requests / 5 minutes per IP                  │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 2: CloudFront serves static frontend from S3                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 📡 CloudFront + S3                                                  │    │
+│  │    • TLS 1.2 enforced (HTTP → HTTPS redirect)                       │    │
+│  │    • S3 bucket: ALL public access blocked                           │    │
+│  │    • Access via OAC (Origin Access Control) only                    │    │
+│  │    • CORS: only https://d378wato2sz2af.cloudfront.net allowed       │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 3: User sends prompt → /api/invoke                                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ ⚡ Lambda@Edge (ARC Router)                                         │    │
+│  │    • Queries ARC routing control in real-time                       │    │
+│  │    • On = route to us-east-1 | Off = route to us-east-2            │    │
+│  │    • Failover in < 30 seconds                                       │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 4: Request hits Agent Proxy HTTP API                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 🔒 JWT Authorizer (Azure Entra ID)                                  │    │
+│  │    • Validates token signature against Azure AD JWKS                 │    │
+│  │    • Checks audience claim matches app registration                 │    │
+│  │    • No token or invalid token → 401 Unauthorized                   │    │
+│  │    • Expired token → 401 Unauthorized                               │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ════════════════ ENTERS VPC (Private Subnets) ════════════════             │
+│                                                                             │
+│  STEP 5: Agent Proxy Lambda (VPC-attached)                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ λ Agent Proxy                                                       │    │
+│  │    • Runs in private subnet (no internet access)                    │    │
+│  │    • Calls AgentCore Runtime via VPC endpoint                       │    │
+│  │    • Security Group: egress 443 only                                │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 6: AgentCore Runtime (VPC Mode)                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 🤖 AgentCore Runtime (Claude Sonnet 4.5)                            │    │
+│  │    • NetworkMode: VPC (ENIs in private subnets)                     │    │
+│  │    • Calls Bedrock LLM via bedrock-runtime VPC endpoint             │    │
+│  │    • Calls Gateway via bedrock-agentcore.gateway VPC endpoint       │    │
+│  │    • Loads MCP tools from Gateway (private path)                    │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 7: AgentCore Gateway (AWS-managed)                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 🔗 AgentCore Gateway                                                │    │
+│  │    • Custom JWT authorizer (validates agent's token)                 │    │
+│  │    • Cedar Policy Engine: forbids qty >= 100                        │    │
+│  │    • OAuth2 credential provider (delegated user access)             │    │
+│  │    • Calls Orders API over AWS backbone (not public internet)       │    │
+│  │    • IAM: scoped policy (execute-api + secrets + agentcore only)    │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 8: Orders REST API                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 🛡️ Orders API (REGIONAL + Resource Policy + WAF)                    │    │
+│  │    • Resource Policy: ONLY AgentCore Gateway can invoke             │    │
+│  │    • Direct access from anywhere else → 403 Forbidden               │    │
+│  │    • WAF: IP reputation + SQLi + rate limiting                      │    │
+│  │    • JWT Authorizer: validates delegated user token                 │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 9: Orders Lambda Functions (VPC-attached)                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ λ Orders Lambdas (GET/POST/PUT)                                     │    │
+│  │    • Run in private subnets                                         │    │
+│  │    • Access DynamoDB via Gateway VPC endpoint (FREE, private)       │    │
+│  │    • IAM: scoped to specific DynamoDB table only                    │    │
+│  │    • No internet access                                             │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  STEP 10: DynamoDB (Private)                                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ 📊 DynamoDB Global Table                                            │    │
+│  │    • Accessed only via Gateway VPC endpoint                         │    │
+│  │    • Replicated: us-east-1 ↔ us-east-2 (RPO = 0)                   │    │
+│  │    • Point-in-Time Recovery enabled                                 │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### What's blocked at each layer:
+
+| Attack | Blocked By | Response |
+|--------|-----------|----------|
+| DDoS / rate abuse | WAF (Step 1) | 403 |
+| SQL injection | WAF (Step 1, 8) | 403 |
+| No authentication | JWT Authorizer (Step 4) | 401 |
+| Stolen/expired token | JWT Authorizer (Step 4) | 401 |
+| Direct API bypass | Resource Policy (Step 8) | 403 |
+| Quantity > 100 | Cedar Policy (Step 7) | Blocked by policy |
+| Cross-origin attack | CORS (Step 2) | No CORS headers |
+| Data exfiltration | VPC isolation (Steps 5-9) | No internet path |
+| Region failure | ARC failover (Step 3) | Auto-route to DR |
 
 | Layer | Control | Effect |
 |-------|---------|--------|
