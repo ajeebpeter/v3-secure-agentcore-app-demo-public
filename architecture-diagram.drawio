@@ -1461,4 +1461,141 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram name="Security-Posture" id="security-posture-e2e">
+    <mxGraphModel dx="2000" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="sp-0" />
+        <mxCell id="sp-1" parent="sp-0" />
+
+        <!-- Title -->
+        <mxCell id="sp-title" value="&lt;font style=&quot;font-size:22px&quot;&gt;&lt;b&gt;Security Posture — End-to-End Flow&lt;/b&gt;&lt;/font&gt;&lt;br&gt;All traffic private via VPC | JWT + WAF + Cedar Policy | Multi-Region ARC Failover" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontSize=14;" vertex="1" parent="sp-1">
+          <mxGeometry x="450" y="10" width="600" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1: User -->
+        <mxCell id="sp-user" value="User" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;" vertex="1" parent="sp-1">
+          <mxGeometry x="80" y="200" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step1" value="① HTTPS + MSAL JWT" style="text;html=1;align=center;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="150" y="210" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Step 2: WAF -->
+        <mxCell id="sp-waf" value="WAF" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.waf;" vertex="1" parent="sp-1">
+          <mxGeometry x="300" y="195" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step2" value="② IP Rep + SQLi + Rate Limit&lt;br&gt;(2000 req/5min)" style="text;html=1;align=center;fontSize=9;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="270" y="265" width="130" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3: CloudFront -->
+        <mxCell id="sp-cf" value="CloudFront" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;" vertex="1" parent="sp-1">
+          <mxGeometry x="450" y="195" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step3" value="③ TLS 1.2 + OAC&lt;br&gt;CORS: CF domain only" style="text;html=1;align=center;fontSize=9;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="420" y="265" width="130" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 4: Lambda@Edge + ARC -->
+        <mxCell id="sp-edge" value="Lambda@Edge" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="sp-1">
+          <mxGeometry x="600" y="195" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step4" value="④ ARC Failover&lt;br&gt;On→us-east-1 | Off→us-east-2" style="text;html=1;align=center;fontSize=9;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="565" y="265" width="150" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- VPC Boundary -->
+        <mxCell id="sp-vpc" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;opacity=30;" vertex="1" parent="sp-1">
+          <mxGeometry x="50" y="330" width="1400" height="700" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-vpclabel" value="&lt;font style=&quot;font-size:14px&quot;&gt;&lt;b&gt;VPC 10.0.0.0/16 — Private Subnets (No Internet Gateway)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;" vertex="1" parent="sp-1">
+          <mxGeometry x="70" y="335" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Step 5: JWT Authorizer -->
+        <mxCell id="sp-apigw" value="HTTP API GW" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="sp-1">
+          <mxGeometry x="150" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step5" value="⑤ JWT Authorizer&lt;br&gt;No token = 401 Unauthorized" style="text;html=1;align=center;fontSize=9;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="110" y="460" width="150" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 6: Agent Proxy Lambda -->
+        <mxCell id="sp-proxy" value="Agent Proxy" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="sp-1">
+          <mxGeometry x="350" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step6" value="⑥ VPC-attached Lambda&lt;br&gt;Private subnet only" style="text;html=1;align=center;fontSize=9;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="310" y="460" width="140" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 7: AgentCore Runtime -->
+        <mxCell id="sp-runtime" value="AgentCore&lt;br&gt;Runtime" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sagemaker;" vertex="1" parent="sp-1">
+          <mxGeometry x="550" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step7" value="⑦ VPC Mode&lt;br&gt;ENIs in private subnets&lt;br&gt;Claude Sonnet 4.5" style="text;html=1;align=center;fontSize=9;fillColor=#b0e3e6;strokeColor=#0e8585;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="510" y="460" width="140" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Step 8: AgentCore Gateway -->
+        <mxCell id="sp-gw" value="AgentCore&lt;br&gt;Gateway" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.step_functions;" vertex="1" parent="sp-1">
+          <mxGeometry x="750" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step8" value="⑧ MCP Protocol&lt;br&gt;JWT Auth + Cedar Policy&lt;br&gt;(qty≥100 blocked)" style="text;html=1;align=center;fontSize=9;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="710" y="460" width="140" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Step 9: Orders API + WAF -->
+        <mxCell id="sp-ordersapi" value="Orders API" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;" vertex="1" parent="sp-1">
+          <mxGeometry x="950" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step9" value="⑨ REST API + JWT Auth&lt;br&gt;+ WAF (IP/SQLi/Rate)&lt;br&gt;REGIONAL endpoint" style="text;html=1;align=center;fontSize=9;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="910" y="460" width="145" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Step 10: Orders Lambdas -->
+        <mxCell id="sp-orders" value="Orders&lt;br&gt;Lambdas" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="sp-1">
+          <mxGeometry x="1150" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step10" value="⑩ VPC-attached&lt;br&gt;GET/POST/PUT orders" style="text;html=1;align=center;fontSize=9;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="1115" y="460" width="130" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 11: DynamoDB -->
+        <mxCell id="sp-ddb" value="DynamoDB" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;" vertex="1" parent="sp-1">
+          <mxGeometry x="1350" y="390" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sp-step11" value="⑪ Gateway VPC Endpoint&lt;br&gt;Global Table (multi-region)&lt;br&gt;Private access only" style="text;html=1;align=center;fontSize=9;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;" vertex="1" parent="sp-1">
+          <mxGeometry x="1305" y="460" width="155" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- VPC Endpoints box -->
+        <mxCell id="sp-epbox" value="&lt;b&gt;11 VPC Endpoints (PrivateLink)&lt;/b&gt;&lt;br&gt;&lt;br&gt;Gateway (FREE): DynamoDB, S3&lt;br&gt;Interface: SecretsManager, Bedrock Runtime,&lt;br&gt;CloudWatch Logs, ECR (dkr+api),&lt;br&gt;bedrock-agentcore, agentcore.gateway,&lt;br&gt;bedrock-agent-runtime, execute-api" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="sp-1">
+          <mxGeometry x="100" y="540" width="350" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Security Summary box -->
+        <mxCell id="sp-summary" value="&lt;b&gt;Security Controls Active&lt;/b&gt;&lt;br&gt;&lt;br&gt;✅ WAF: IP reputation + SQLi + Rate limiting&lt;br&gt;✅ JWT: Azure AD token required on all API calls&lt;br&gt;✅ VPC: All compute in private subnets&lt;br&gt;✅ Endpoints: 11 PrivateLink (no public AWS calls)&lt;br&gt;✅ Cedar: Fine-grained tool-level policy (qty&lt;100)&lt;br&gt;✅ IAM: Scoped roles (no wildcards on sensitive actions)&lt;br&gt;✅ CORS: Locked to CloudFront domain&lt;br&gt;✅ ARC: &lt;30s failover to DR region&lt;br&gt;✅ Encryption: TLS 1.2 everywhere, S3 AES-256" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="sp-1">
+          <mxGeometry x="500" y="540" width="380" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- Traffic classification -->
+        <mxCell id="sp-traffic" value="&lt;b&gt;Traffic Classification&lt;/b&gt;&lt;br&gt;&lt;br&gt;🟢 Private (VPC Endpoint): Steps ⑥→⑦→⑧, ⑩→⑪&lt;br&gt;🔵 Authenticated (JWT): Steps ⑤, ⑨&lt;br&gt;🟠 Controlled Public: Gateway→Orders API (JWT+WAF)&lt;br&gt;🔴 Blocked: No token, bad IP, SQLi, rate exceeded" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="sp-1">
+          <mxGeometry x="930" y="540" width="380" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Flow arrows -->
+        <mxCell id="sp-f1" edge="1" source="sp-user" target="sp-waf" parent="sp-1" style="strokeColor=#009900;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f2" edge="1" source="sp-waf" target="sp-cf" parent="sp-1" style="strokeColor=#009900;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f3" edge="1" source="sp-cf" target="sp-edge" parent="sp-1" style="strokeColor=#0066CC;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f4" edge="1" source="sp-edge" target="sp-apigw" parent="sp-1" style="strokeColor=#0066CC;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f5" edge="1" source="sp-apigw" target="sp-proxy" parent="sp-1" style="strokeColor=#663399;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f6" edge="1" source="sp-proxy" target="sp-runtime" parent="sp-1" style="strokeColor=#663399;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f7" edge="1" source="sp-runtime" target="sp-gw" parent="sp-1" style="strokeColor=#663399;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f8" edge="1" source="sp-gw" target="sp-ordersapi" parent="sp-1" style="strokeColor=#CC6600;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f9" edge="1" source="sp-ordersapi" target="sp-orders" parent="sp-1" style="strokeColor=#663399;strokeWidth=2;rounded=1;" />
+        <mxCell id="sp-f10" edge="1" source="sp-orders" target="sp-ddb" parent="sp-1" style="strokeColor=#663399;strokeWidth=2;dashed=1;rounded=1;" />
+
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>
