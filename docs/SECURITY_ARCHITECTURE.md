@@ -35,8 +35,8 @@ flowchart TB
                 end
                 NAT1["🌐 NAT Gateway<br/>(Azure AD only)"]
             end
-            OrdersAPI1["🛡️ Orders REST API GW<br/>REGIONAL + JWT + WAF<br/>(AWS-managed, outside VPC)"]
-            Gateway1["🔗 AgentCore Gateway<br/>(AWS-managed, outside VPC)<br/>MCP + Cedar Policy"]
+            OrdersAPI1["🛡️ Orders REST API GW<br/>REGIONAL + JWT + WAF<br/>🔐 Resource Policy: Gateway-only<br/>(all others → 403)"]
+            Gateway1["🔗 AgentCore Gateway<br/>(AWS-managed, AWS backbone)<br/>MCP + Cedar Policy + Scoped IAM"]
         end
 
         subgraph DR["🟡 us-east-2 (DR)"]
