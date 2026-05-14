@@ -109,6 +109,11 @@ Parameters:
     Default: ''
     Description: execute-api VPC endpoint ID from vpc-stack
 
+  GatewayArn:
+    Type: String
+    Default: ''
+    Description: AgentCore Gateway ARN for API resource policy lockdown
+
 Resources:
   BackendAPIStack:
     Type: AWS::CloudFormation::Stack
@@ -131,6 +136,7 @@ Resources:
             - !Ref PrivateSubnet2Id
         LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
         ExecuteApiEndpointId: !Ref ExecuteApiEndpointId
+        GatewayArn: !Ref GatewayArn
       Tags:
         - Key: Environment
           Value: !Ref Environment

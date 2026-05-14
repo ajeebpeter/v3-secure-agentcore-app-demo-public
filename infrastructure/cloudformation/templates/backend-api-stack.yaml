@@ -85,6 +85,11 @@ Parameters:
     Default: ''
     Description: VPC endpoint ID for execute-api service (required for PRIVATE API Gateway)
 
+  GatewayArn:
+    Type: String
+    Default: ''
+    Description: AgentCore Gateway ARN — restricts API access to only this gateway
+
 Conditions:
   ShouldCreateTable: !Equals [!Ref CreateDDBTable, 'true']
   HasDRRegion: !Not [!Equals [!Ref DRRegion, '']]
@@ -92,6 +97,7 @@ Conditions:
     - !Condition ShouldCreateTable
     - !Condition HasDRRegion
   HasVpcConfig: !Not [!Equals [!Ref VpcId, '']]
+  HasGatewayArn: !Not [!Equals [!Ref GatewayArn, '']]
 
 Resources:
   # DynamoDB Global Table with GSIs for order management
@@ -390,8 +396,8 @@ Resources:
 
   # API Gateway REST API
   # When VPC config is provided, the API becomes PRIVATE (accessible only from within the VPC)
-  # Orders API stays REGIONAL — AgentCore Gateway (AWS-managed, outside VPC) needs to reach it.
-  # Security is enforced by JWT authorizer + WAF, not network isolation.
+  # Orders API stays REGIONAL — traffic from AgentCore Gateway stays on AWS backbone.
+  # Resource policy restricts access to ONLY the AgentCore Gateway service principal.
   OrdersApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
@@ -400,6 +406,28 @@ Resources:
       EndpointConfiguration:
         Types:
           - REGIONAL
+      Policy: !If
+        - HasGatewayArn
+        - !Sub |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "bedrock-agentcore.amazonaws.com"
+                  },
+                  "Action": "execute-api:Invoke",
+                  "Resource": "execute-api:/*",
+                  "Condition": {
+                    "ArnEquals": {
+                      "aws:SourceArn": "${GatewayArn}"
+                    }
+                  }
+                }
+              ]
+            }
+        - !Ref AWS::NoValue
       Tags:
         - Key: Environment
           Value: !Ref Environment
