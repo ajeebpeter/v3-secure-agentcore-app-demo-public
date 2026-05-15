@@ -96,7 +96,7 @@ Use this to walk through the security posture during a demo:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1: User opens https://d378wato2sz2af.cloudfront.net                   │
+│  STEP 1: User opens https://YOUR_CLOUDFRONT_DOMAIN.cloudfront.net                   │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │ 🛡️ WAF (CloudFront)                                                │    │
 │  │    • Blocks known malicious IPs (AWS IP Reputation List)            │    │
@@ -110,7 +110,7 @@ Use this to walk through the security posture during a demo:
 │  │    • TLS 1.2 enforced (HTTP → HTTPS redirect)                       │    │
 │  │    • S3 bucket: ALL public access blocked                           │    │
 │  │    • Access via OAC (Origin Access Control) only                    │    │
-│  │    • CORS: only https://d378wato2sz2af.cloudfront.net allowed       │    │
+│  │    • CORS: only https://YOUR_CLOUDFRONT_DOMAIN.cloudfront.net allowed       │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                             │
 │  STEP 3: User sends prompt → /api/invoke                                   │

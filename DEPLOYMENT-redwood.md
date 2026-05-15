@@ -228,14 +228,14 @@ The script validates the resolved account ID — if credentials are wrong or pro
 | Primary Stack | `secure-agentcore-app-dev-redwood` (us-east-1) |
 | DR Stack | `secure-agentcore-app-dev-redwood-dr` (us-east-2) |
 | Global Stack | `secure-agentcore-app-dev-redwood-global` (us-east-1) |
-| Frontend | `https://dom3dptlu0xg4.cloudfront.net` |
+| Frontend | `https://YOUR_CLOUDFRONT_DOMAIN.cloudfront.net` |
 | Endpoint | `/api/invoke` (via CloudFront → Lambda@Edge → active region) |
-| Memory (Primary) | `dev_memory_us_east_1_redwood-1Folr0B81r` |
-| Memory (DR) | `dev_memory_us_east_2_redwood-PCgTw4FgCH` |
+| Memory (Primary) | `dev_memory_us_east_1_redwood-XXXXXXXXXX` |
+| Memory (DR) | `dev_memory_us_east_2_redwood-XXXXXXXXXX` |
 | Lambda@Edge | `dev-origin-router-redwood:v10` (us-east-1, updated in-place) |
 | ARC Control | `acore-redwood-ue1-active` (On = us-east-1) |
-| Callback (us-east-1) | `https://bedrock-agentcore.us-east-1.amazonaws.com/identities/oauth2/callback/4ab6e37b-3eb4-4a02-9624-ddf443b8d89d` |
-| Callback (us-east-2) | `https://bedrock-agentcore.us-east-2.amazonaws.com/identities/oauth2/callback/1df11691-1bbf-43db-be22-9cf52ce40d1d` |
+| Callback (us-east-1) | `https://bedrock-agentcore.us-east-1.amazonaws.com/identities/oauth2/callback/YOUR_CALLBACK_ID` |
+| Callback (us-east-2) | `https://bedrock-agentcore.us-east-2.amazonaws.com/identities/oauth2/callback/YOUR_CALLBACK_ID` |
 
 ---
 

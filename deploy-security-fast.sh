@@ -27,14 +27,14 @@ PARAM_OVERRIDES+=("LambdaCodeBucket=dev-lambda-code-v3redwood-us-east-1")
 PARAM_OVERRIDES+=("DeploymentSuffix=v3redwood")
 PARAM_OVERRIDES+=("CreateDDBTable=true")
 PARAM_OVERRIDES+=("DRRegion=us-east-2")
-PARAM_OVERRIDES+=("CloudFrontDomain=d378wato2sz2af.cloudfront.net")
+PARAM_OVERRIDES+=("CloudFrontDomain=YOUR_CLOUDFRONT_DOMAIN")
 
 # VPC parameters from standalone VPC stack
-PARAM_OVERRIDES+=("VpcId=vpc-0a4c6c81f198aec76")
-PARAM_OVERRIDES+=("PrivateSubnet1Id=subnet-07abc32f6307ea12c")
-PARAM_OVERRIDES+=("PrivateSubnet2Id=subnet-07d17d734f3596e7f")
-PARAM_OVERRIDES+=("LambdaSecurityGroupId=sg-0c7076fef649dcfa5")
-PARAM_OVERRIDES+=("ExecuteApiEndpointId=vpce-0c24d9204a82cdf14")
+PARAM_OVERRIDES+=("VpcId=YOUR_VPC_ID")
+PARAM_OVERRIDES+=("PrivateSubnet1Id=YOUR_PRIVATE_SUBNET_1_ID")
+PARAM_OVERRIDES+=("PrivateSubnet2Id=YOUR_PRIVATE_SUBNET_2_ID")
+PARAM_OVERRIDES+=("LambdaSecurityGroupId=YOUR_LAMBDA_SG_ID")
+PARAM_OVERRIDES+=("ExecuteApiEndpointId=YOUR_VPCE_ID")
 
 # Gateway ARN for API resource policy lockdown
 GW_ARN=$(aws cloudformation describe-stacks --stack-name "${STACK}" --region "${REGION}" --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeArn`].OutputValue' --output text 2>/dev/null | sed 's/runtime/gateway/' || echo "")
@@ -49,7 +49,7 @@ if [ -n "${GW_ID}" ] && [ "${GW_ID}" != "None" ]; then
 fi
 
 echo "Deploying ${STACK} with VPC security enhancements..."
-echo "  VPC: vpc-0a4c6c81f198aec76"
+echo "  VPC: ${VPC_ID:-see PARAM_OVERRIDES}"
 echo "  Subnets: use1-az4, use1-az1 (supported by AgentCore)"
 
 aws cloudformation deploy \

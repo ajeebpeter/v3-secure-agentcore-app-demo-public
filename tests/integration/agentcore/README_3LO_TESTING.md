@@ -46,7 +46,7 @@ python register_workload_identity.py \
   --region us-west-2 \
   --identity-name my-cool-test-app \
   --return-url 'http://localhost:9090/oauth2/callback' \
-  --gateway-client-id f8595cc5-9f3a-4459-81d7-abd0c3d67b1a
+  --gateway-client-id YOUR_AZURE_CLIENT_ID
 ```
 
 **Note:** If you're running in a different environment (e.g., SageMaker), the return URL will be different. The test script will show you the correct URL.

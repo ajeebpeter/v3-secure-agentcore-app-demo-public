@@ -16,10 +16,10 @@ const ConfigAccessor = {
     if (!config) {
       console.warn('Using hardcoded auth config fallback - APP_CONFIG.auth not found');
       return {
-        clientId: "f8595cc5-9f3a-4459-81d7-abd0c3d67b1a",
-        authority: "https://login.microsoftonline.com/d96b138a-fa21-4e19-a6cd-031770526997",
-        redirectUri: "https://d31elkamfvqevy.cloudfront.net/",
-        scopes: ["f8595cc5-9f3a-4459-81d7-abd0c3d67b1a/.default"]
+        clientId: "YOUR_AZURE_CLIENT_ID",
+        authority: "https://login.microsoftonline.com/YOUR_AZURE_TENANT_ID",
+        redirectUri: "https://YOUR_CLOUDFRONT_DOMAIN/",
+        scopes: ["YOUR_AZURE_CLIENT_ID/.default"]
       };
     }
     return config;
@@ -34,7 +34,7 @@ const ConfigAccessor = {
     if (!config) {
       console.warn('Using hardcoded API config fallback - APP_CONFIG.api not found');
       return {
-        agentcoreEndpoint: "https://oy24mor22e.execute-api.us-west-2.amazonaws.com/invoke",
+        agentcoreEndpoint: "https://YOUR_API_GATEWAY_ID.execute-api.YOUR_REGION.amazonaws.com/invoke",
         wsSignEndpoint: ""
       };
     }
